@@ -1,4 +1,5 @@
 from fastapi import Request, HTTPException, status
+from fastapi.security.utils import get_authorization_scheme_param
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import select
 
@@ -10,42 +11,42 @@ from app.models.user import User
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
 
-        public_paths = [
+        public_paths = {
             "/",
             "/health",
             "/docs",
             "/openapi.json",
             "/redoc",
-            "/uploads",
             "/api/auth/login",
             "/api/auth/login/json",
             "/api/telegram/login",
-        ]
+        }
 
-        if any(request.url.path.startswith(p) for p in public_paths):
+        # uploads public ne
+        if request.url.path.startswith("/uploads/"):
             return await call_next(request)
 
-        auth = request.headers.get("Authorization")
+        # Exact match kawai
+        if request.url.path in public_paths:
+            return await call_next(request)
 
-        if auth and auth.startswith("Bearer "):
+        authorization = request.headers.get("Authorization")
 
-            token = auth.replace("Bearer ", "")
+        scheme, token = get_authorization_scheme_param(authorization)
 
+        if scheme.lower() == "bearer" and token:
             payload = decode_access_token(token)
 
             if payload:
-
                 user_id = payload.get("sub")
 
                 if user_id:
-
                     async with AsyncSessionLocal() as session:
-
                         result = await session.execute(
                             select(User).where(User.id == int(user_id))
                         )
 
-                        user = result.scalar()
+                        user = result.scalar_one_or_none()
 
                         if user:
                             request.state.user = user
@@ -54,7 +55,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 
 async def get_current_user(request: Request):
-
     user = getattr(request.state, "user", None)
 
     if user is None:
