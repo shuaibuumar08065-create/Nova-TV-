@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import VideoUpload from "./pages/VideoUpload";
 import VideoEdit from "./pages/VideoEdit";
+import Videos from "./pages/Videos";
 import Categories from "./pages/Categories";
 import Users from "./pages/Users";
 import Ads from "./pages/Ads";
@@ -69,6 +70,11 @@ function AppRoutes() {
           <Route
             path="upload"
             element={<VideoUpload />}
+          />
+          
+          <Route
+            path="videos"
+            element={<Videos />}
           />
 
           <Route
