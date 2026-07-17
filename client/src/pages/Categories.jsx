@@ -1,83 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
+import { toast } from 'react-hot-toast';
+import CategoryForm from '../components/CategoryForm';
 
-function Categories() {
+const Categories = () => {
   const [categories, setCategories] = useState([]);
-  const [name, setName] = useState('');
-  const [editing, setEditing] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
 
-  const fetchCategories = () => {
-    api.get('/api/categories').then(res => setCategories(res.data));
-  };
-
-  useEffect(fetchCategories, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+  const fetchCategories = async () => {
     try {
-      if (editing) {
-        await api.put(`/api/categories/${editing}`, { name });
-      } else {
-        await api.post('/api/categories', { name });
-      }
-      setName('');
-      setEditing(null);
-      fetchCategories();
+      const response = await api.get('/api/categories/');
+      setCategories(response.data);
+      setError(null);
     } catch (err) {
-      alert(err.response?.data?.detail || 'Operation failed');
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete category?')) return;
+    if (!window.confirm('Delete this category?')) return;
     try {
       await api.delete(`/api/categories/${id}`);
-      fetchCategories();
+      toast.success('Category deleted');
+      setCategories(categories.filter((cat) => cat.id !== id));
     } catch (err) {
-      alert(err.response?.data?.detail || 'Delete failed');
+      const msg = getErrorMessage(err);
+      toast.error(msg);
     }
   };
 
-  const startEdit = (cat) => {
-    setEditing(cat.id);
-    setName(cat.name);
+  const handleEdit = (category) => {
+    setEditingCategory(category);
   };
 
+  const handleFormSuccess = () => {
+    setEditingCategory(null);
+    fetchCategories();
+  };
+
+  if (loading) return <div>Loading categories...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Categories</h2>
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Category name"
-          className="flex-1 p-2 border rounded"
-          required
-        />
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-          {editing ? 'Update' : 'Add'}
-        </button>
-        {editing && (
-          <button type="button" onClick={() => { setEditing(null); setName(''); }} className="bg-gray-500 text-white px-4 py-2 rounded">
-            Cancel
-          </button>
+    <div className="categories-page">
+      <h1>Manage Categories</h1>
+      <CategoryForm
+        category={editingCategory}
+        onSuccess={handleFormSuccess}
+        onCancel={() => setEditingCategory(null)}
+      />
+
+      <div className="category-list">
+        {categories.length === 0 ? (
+          <p>No categories yet. Add one above.</p>
+        ) : (
+          <ul>
+            {categories.map((cat) => (
+              <li key={cat.id}>
+                <span>{cat.name}</span>
+                <div>
+                  <button onClick={() => handleEdit(cat)}>Edit</button>
+                  <button onClick={() => handleDelete(cat.id)}>Delete</button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </form>
-      <ul className="space-y-2">
-        {categories.map(cat => (
-          <li key={cat.id} className="flex justify-between items-center bg-white p-3 rounded shadow">
-            <span>{cat.name}</span>
-            <div>
-              <button onClick={() => startEdit(cat)} className="text-blue-500 mr-2">Edit</button>
-              <button onClick={() => handleDelete(cat.id)} className="text-red-500">Delete</button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      </div>
     </div>
   );
-}
+};
 
 export default Categories;

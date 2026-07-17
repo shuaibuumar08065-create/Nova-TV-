@@ -1,26 +1,23 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { init } from "@telegram-apps/sdk";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import App from './App';
+import './index.css';
 
-import App from "./App";
-import "./styles/index.css";
-import { AuthProvider } from "./context/AuthContext";
-
-try {
-  init();
-
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.ready();
-    window.Telegram.WebApp.expand();
-  }
-} catch (err) {
-  console.log("Telegram SDK:", err);
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
+    <BrowserRouter>
       <App />
-    </AuthProvider>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 5000,
+          style: { background: '#333', color: '#fff' },
+          success: { duration: 3000 },
+          error: { duration: 6000 },
+        }}
+      />
+    </BrowserRouter>
   </React.StrictMode>
 );

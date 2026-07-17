@@ -1,109 +1,340 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useState, useEffect } from "react";
+import api from "../services/api";
 
-function Ads() {
+export default function Ads() {
+  const emptyForm = {
+    title: "",
+    description: "",
+    image_url: "",
+    link_url: "",
+    active: true,
+    position: "sidebar",
+  };
+
   const [ads, setAds] = useState([]);
-  const [form, setForm] = useState({ title: '', description: '', image_url: '', link_url: '', active: true, position: 'sidebar' });
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyForm);
 
-  const fetchAds = () => {
-    api.get('/api/ads').then(res => setAds(res.data));
-  };
+  async function fetchAds() {
+    try {
+      const res = await api.get("/api/ads");
+      setAds(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  useEffect(fetchAds, []);
+  useEffect(() => {
+    fetchAds();
+  }, []);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
+  function handleChange(e) {
+    const { name, value, checked, type } = e.target;
 
-  const handleSubmit = async (e) => {
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
+
     try {
       if (editing) {
         await api.put(`/api/ads/${editing}`, form);
       } else {
-        await api.post('/api/ads', form);
+        await api.post("/api/ads", form);
       }
-      setForm({ title: '', description: '', image_url: '', link_url: '', active: true, position: 'sidebar' });
+
       setEditing(null);
+      setForm(emptyForm);
       fetchAds();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Operation failed');
+      alert(err.response?.data?.detail || "Operation failed");
     }
-  };
+  }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete ad?')) return;
+  function editAd(ad) {
+    setEditing(ad.id);
+
+    setForm({
+      title: ad.title || "",
+      description: ad.description || "",
+      image_url: ad.image_url || "",
+      link_url: ad.link_url || "",
+      active: ad.active,
+      position: ad.position || "sidebar",
+    });
+  }
+
+  async function deleteAd(id) {
+    if (!window.confirm("Delete this advertisement?")) return;
+
     try {
       await api.delete(`/api/ads/${id}`);
       fetchAds();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Delete failed');
+      alert(err.response?.data?.detail || "Delete failed");
     }
-  };
+  }
 
-  const startEdit = (ad) => {
-    setEditing(ad.id);
-    setForm(ad);
-  };
+  function cancelEdit() {
+    setEditing(null);
+    setForm(emptyForm);
+  }
+
+  const totalViews = ads.reduce(
+    (sum, ad) => sum + (ad.views || 0),
+    0
+  );
+
+  const totalClicks = ads.reduce(
+    (sum, ad) => sum + (ad.clicks || 0),
+    0
+  );
+
+  const totalAds = ads.length;
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-lg">
+        Loading advertisements...
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Manage Ads</h2>
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded shadow mb-4">
-        <div>
-          <label className="block text-sm font-medium">Title</label>
-          <input name="title" value={form.title} onChange={handleChange} className="w-full p-2 border rounded" required />
+    <div className="max-w-7xl mx-auto p-6">
+
+      <h1 className="text-3xl font-bold mb-6">
+        Advertisement Manager
+      </h1>
+
+      <div className="grid md:grid-cols-3 gap-4 mb-8">
+
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-gray-500 text-sm">
+            Total Ads
+          </p>
+
+          <h2 className="text-3xl font-bold">
+            {totalAds}
+          </h2>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Description</label>
-          <textarea name="description" value={form.description} onChange={handleChange} className="w-full p-2 border rounded" />
+
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-gray-500 text-sm">
+            Total Views
+          </p>
+
+          <h2 className="text-3xl font-bold text-blue-600">
+            {totalViews}
+          </h2>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Image URL</label>
-          <input name="image_url" value={form.image_url} onChange={handleChange} className="w-full p-2 border rounded" />
+
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-gray-500 text-sm">
+            Total Clicks
+          </p>
+
+          <h2 className="text-3xl font-bold text-green-600">
+            {totalClicks}
+          </h2>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Link URL</label>
-          <input name="link_url" value={form.link_url} onChange={handleChange} className="w-full p-2 border rounded" />
+      </div><div className="grid lg:grid-cols-2 gap-8">
+
+        <div className="bg-white rounded-xl shadow p-6">
+
+          <h2 className="text-xl font-bold mb-5">
+            {editing ? "Update Advertisement" : "Create Advertisement"}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+
+            <input
+              type="text"
+              name="title"
+              placeholder="Advertisement title"
+              value={form.title}
+              onChange={handleChange}
+              className="w-full border rounded-lg p-3"
+              required
+            />
+
+            <textarea
+              name="description"
+              placeholder="Description"
+              value={form.description}
+              onChange={handleChange}
+              rows="4"
+              className="w-full border rounded-lg p-3"
+            />
+
+            <input
+              type="text"
+              name="image_url"
+              placeholder="Image URL"
+              value={form.image_url}
+              onChange={handleChange}
+              className="w-full border rounded-lg p-3"
+            />
+
+            <input
+              type="text"
+              name="link_url"
+              placeholder="Destination URL"
+              value={form.link_url}
+              onChange={handleChange}
+              className="w-full border rounded-lg p-3"
+            />
+
+            <select
+              name="position"
+              value={form.position}
+              onChange={handleChange}
+              className="w-full border rounded-lg p-3"
+            >
+              <option value="sidebar">Sidebar</option>
+              <option value="banner">Banner</option>
+            </select>
+
+            <label className="flex items-center gap-3">
+
+              <input
+                type="checkbox"
+                name="active"
+                checked={form.active}
+                onChange={handleChange}
+              />
+
+              Active Advertisement
+
+            </label>
+
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white rounded-lg py-3"
+            >
+              {editing ? "Update Advertisement" : "Create Advertisement"}
+            </button>
+
+            {editing && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="w-full bg-gray-600 text-white rounded-lg py-3"
+              >
+                Cancel Editing
+              </button>
+            )}
+
+          </form>
+
         </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" name="active" checked={form.active} onChange={handleChange} />
-          <label>Active</label>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Position</label>
-          <select name="position" value={form.position} onChange={handleChange} className="w-full p-2 border rounded">
-            <option value="sidebar">Sidebar</option>
-            <option value="banner">Banner</option>
-          </select>
-        </div>
-        <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded">
-          {editing ? 'Update' : 'Create'} Ad
-        </button>
-        {editing && (
-          <button type="button" onClick={() => { setEditing(null); setForm({ title: '', description: '', image_url: '', link_url: '', active: true, position: 'sidebar' }); }} className="w-full bg-gray-500 text-white py-2 rounded">
-            Cancel
-          </button>
-        )}
-      </form>
-      <ul className="space-y-2">
-        {ads.map(ad => (
-          <li key={ad.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
-            <div>
-              <p className="font-bold">{ad.title}</p>
-              <p className="text-sm text-gray-600">{ad.position} - {ad.active ? 'Active' : 'Inactive'}</p>
+
+        <div className="space-y-4">
+
+          <h2 className="text-xl font-bold">
+            Advertisements
+          </h2>{ads.length === 0 && (
+            <div className="bg-white rounded-xl shadow p-6 text-center text-gray-500">
+              No advertisements found.
             </div>
-            <div>
-              <button onClick={() => startEdit(ad)} className="text-blue-500 mr-2">Edit</button>
-              <button onClick={() => handleDelete(ad.id)} className="text-red-500">Delete</button>
+          )}
+
+          {ads.map((ad) => (
+            <div
+              key={ad.id}
+              className="bg-white rounded-xl shadow p-5"
+            >
+
+              <div className="flex items-center justify-between mb-3">
+
+                <div>
+
+                  <h3 className="font-bold text-lg">
+                    {ad.title}
+                  </h3>
+
+                  <p className="text-sm text-gray-500">
+                    {ad.position}
+                  </p>
+
+                </div>
+
+                <span
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    ad.active
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {ad.active ? "Active" : "Inactive"}
+                </span>
+
+              </div>
+
+              <p className="text-gray-600 mb-4">
+                {ad.description || "No description"}
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+
+                <div className="bg-gray-100 rounded-lg p-3">
+
+                  <p className="text-xs text-gray-500">
+                    Views
+                  </p>
+
+                  <p className="text-xl font-bold text-blue-600">
+                    {ad.views || 0}
+                  </p>
+
+                </div>
+
+                <div className="bg-gray-100 rounded-lg p-3">
+
+                  <p className="text-xs text-gray-500">
+                    Clicks
+                  </p>
+
+                  <p className="text-xl font-bold text-green-600">
+                    {ad.clicks || 0}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="flex gap-3">
+
+                <button
+                  onClick={() => editAd(ad)}
+                  className="flex-1 bg-yellow-500 text-white py-2 rounded-lg"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() => deleteAd(ad.id)}
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg"
+                >
+                  Delete
+                </button>
+
+              </div>
+
             </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+
+        </div>
+
+      </div>
+
     </div>
   );
 }
-
-export default Ads;

@@ -1,23 +1,30 @@
-import { useState } from 'react';
-import api from '../services/api';
+import { useState, useEffect } from 'react';
+import api, { getErrorMessage } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 export const useVideos = () => {
   const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const fetchVideos = async (params = {}) => {
-    setLoading(true);
+  const fetchVideos = async () => {
     try {
-      const res = await api.get('/api/videos', { params });
-      setVideos(res.data);
-      return res.data;
+      setLoading(true);
+      const response = await api.get('/api/videos/');
+      setVideos(response.data);
+      setError(null);
     } catch (err) {
-      console.error(err);
-      throw err;
+      const message = getErrorMessage(err);
+      setError(message);
+      // Toast is already shown by interceptor; we just set state
     } finally {
       setLoading(false);
     }
   };
 
-  return { videos, loading, fetchVideos };
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  return { videos, loading, error, refetch: fetchVideos };
 };

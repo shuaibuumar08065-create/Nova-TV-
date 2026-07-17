@@ -1,79 +1,61 @@
-import React, {
-    createContext,
-    useEffect,
-    useState,
-} from "react";
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import api, { getErrorMessage } from '../services/api';
+import { toast } from 'react-hot-toast';
 
-import api from "../services/api";
-import {
-    login as passwordLogin,
-    telegramLogin,
-    logout as apiLogout,
-} from "../services/auth";
+const AuthContext = createContext();
 
-export const AuthContext = createContext(null);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    // Check if user is already logged in (e.g., via token)
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      // Optionally verify token with backend
+      api
+        .get('/api/auth/me')
+        .then((response) => setUser(response.data))
+        .catch(() => {
+          localStorage.removeItem('access_token');
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
-    const loadUser = async () => {
-        const res = await api.get("/api/auth/me");
-        setUser(res.data);
-    };
+  const login = async (credentials) => {
+    try {
+      const response = await api.post('/api/auth/login', credentials);
+      const { access_token, user } = response.data;
+      localStorage.setItem('access_token', access_token);
+      setUser(user);
+      toast.success('Logged in successfully');
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      toast.error(message);
+      return false;
+    }
+  };
 
-    useEffect(() => {
-        async function init() {
-            try {
-                const tg = window.Telegram?.WebApp;
+  const logout = () => {
+    localStorage.removeItem('access_token');
+    setUser(null);
+    toast.success('Logged out');
+  };
 
-                if (tg?.initData) {
-                    try {
-                        await telegramLogin(tg.initData);
-                        await loadUser();
-                    } catch (e) {
-                        console.log("Telegram login skipped.");
-                    }
-                } else {
-                    const token = localStorage.getItem("access_token");
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    isAuthenticated: !!user,
+  };
 
-                    if (token) {
-                        await loadUser();
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-                localStorage.removeItem("access_token");
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        }
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
 
-        init();
-    }, []);
-
-    const login = async (username, password) => {
-        await passwordLogin(username, password);
-        await loadUser();
-    };
-
-    const logout = () => {
-        apiLogout();
-        setUser(null);
-    };
-
-    return (
-        <AuthContext.Provider
-            value={{
-                user,
-                loading,
-                login,
-                logout,
-                setUser,
-            }}
-        >
-            {children}
-        </AuthContext.Provider>
-    );
-}
+export const useAuth = () => useContext(AuthContext);

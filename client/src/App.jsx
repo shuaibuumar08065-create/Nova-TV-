@@ -1,129 +1,41 @@
-import React from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import React, { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
 
-import { useAuth } from "./hooks/useAuth";
+// Lazy load pages for better performance
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const VideoUpload = lazy(() => import('./pages/VideoUpload'));
+const Videos = lazy(() => import('./pages/Videos'));
+const VideoPlayer = lazy(() => import('./pages/VideoPlayer'));
+const Categories = lazy(() => import('./pages/Categories'));
+const Login = lazy(() => import('./pages/Login'));
 
-import MainLayout from "./layouts/MainLayout";
-import AdminLayout from "./layouts/AdminLayout";
-
-import ProtectedRoute from "./components/ProtectedRoute";
-
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import VideoUpload from "./pages/VideoUpload";
-import VideoEdit from "./pages/VideoEdit";
-import Videos from "./pages/Videos";
-import Categories from "./pages/Categories";
-import Users from "./pages/Users";
-import Ads from "./pages/Ads";
-import Settings from "./pages/Settings";
-import Analytics from "./pages/Analytics";
-import VideoPlayer from "./pages/VideoPlayer";
-import Search from "./pages/Search";
-
-function AppRoutes() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
-
+function App() {
   return (
-    <Routes>
+    <AuthProvider>
+      <Layout>
+        <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Navigate to="/videos" />} />
+            <Route path="/videos" element={<Videos />} />
+            <Route path="/video/:id" element={<VideoPlayer />} />
 
-      {/* Public */}
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/upload" element={<VideoUpload />} />
+              <Route path="/admin/categories" element={<Categories />} />
+            </Route>
 
-      <Route path="/" element={<MainLayout />}>
-        <Route index element={<Home />} />
-        <Route path="video/:id" element={<VideoPlayer />} />
-        <Route path="search" element={<Search />} />
-      </Route>
-
-      <Route path="/login" element={<Login />} />
-
-      {/* Admin */}
-
-      <Route element={<ProtectedRoute />}>
-
-        <Route path="/admin" element={<AdminLayout />}>
-
-          <Route
-            index
-            element={<Navigate to="/admin/dashboard" replace />}
-          />
-
-          <Route
-            path="dashboard"
-            element={<Dashboard />}
-          />
-
-          <Route
-            path="upload"
-            element={<VideoUpload />}
-          />
-          
-          <Route
-            path="videos"
-            element={<Videos />}
-          />
-
-          <Route
-            path="edit/:id"
-            element={<VideoEdit />}
-          />
-
-          <Route
-            path="categories"
-            element={<Categories />}
-          />
-
-          <Route
-            path="users"
-            element={<Users />}
-          />
-
-          <Route
-            path="ads"
-            element={<Ads />}
-          />
-
-          <Route
-            path="settings"
-            element={<Settings />}
-          />
-
-          <Route
-            path="analytics"
-            element={<Analytics />}
-          />
-
-        </Route>
-
-      </Route>
-
-      <Route
-        path="*"
-        element={<Navigate to="/" replace />}
-      />
-
-    </Routes>
+            <Route path="*" element={<div>Page not found</div>} />
+          </Routes>
+        </Suspense>
+      </Layout>
+    </AuthProvider>
   );
 }
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
-  );
-}
+export default App;

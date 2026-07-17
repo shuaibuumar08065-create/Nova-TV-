@@ -1,27 +1,35 @@
 import api from "./api";
 
 export const login = async (username, password) => {
-  const formData = new URLSearchParams();
+  try {
+    const formData = new URLSearchParams();
 
-  formData.append("username", username);
-  formData.append("password", password);
+    formData.append("username", username);
+    formData.append("password", password);
 
-  const res = await api.post("/api/auth/login", formData, {
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  });
+    const res = await api.post("/api/auth/login", formData, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
 
-  const { access_token } = res.data;
+    console.log("LOGIN SUCCESS:", res.data);
 
-  localStorage.setItem("access_token", access_token);
+    const { access_token } = res.data;
 
-  return access_token;
+    localStorage.setItem("access_token", access_token);
+
+    return access_token;
+  } catch (err) {
+    console.log("LOGIN ERROR:", err.response?.data);
+    console.log("STATUS:", err.response?.status);
+    throw err;
+  }
 };
 
 export const telegramLogin = async (initData) => {
   const res = await api.post("/api/telegram/login", {
-    initData: initData,
+    initData,
   });
 
   const { access_token } = res.data;

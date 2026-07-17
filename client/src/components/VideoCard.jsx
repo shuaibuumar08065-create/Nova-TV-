@@ -1,23 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import api, { getErrorMessage } from '../services/api';
+import { toast } from 'react-hot-toast';
 
-function VideoCard({ video }) {
-  const thumb = video.thumbnail_path ? video.thumbnail_path.split('/').pop() : 'default.jpg';
+const VideoCard = ({ video, onDelete }) => {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this video?')) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/videos/${video.id}`);
+      toast.success('Video deleted.');
+      if (onDelete) onDelete(video.id);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="bg-white rounded shadow overflow-hidden">
+    <div className="video-card">
       <Link to={`/video/${video.id}`}>
-        <img
-          src={`/uploads/${thumb}`}
-          alt={video.title}
-          className="w-full h-40 object-cover"
-        />
-        <div className="p-3">
-          <h3 className="font-semibold truncate">{video.title}</h3>
-          <p className="text-sm text-gray-500">{video.views} views</p>
-        </div>
+        <img src={video.thumbnail_url} alt={video.title} />
+        <h3>{video.title}</h3>
       </Link>
+      <button onClick={handleDelete} disabled={deleting}>
+        {deleting ? 'Deleting...' : 'Delete'}
+      </button>
     </div>
   );
-}
+};
 
 export default VideoCard;
